@@ -151,8 +151,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Session Tracking
+    let sessionStartTime = null;
+    let sessionTurnsCount = 0;
+    let sessionFluencies = [];
+    let sessionWordsExtracted = [];
+
     function startSession() {
         isSessionActive = true;
+        sessionStartTime = Date.now();
+        sessionTurnsCount = 0;
+        sessionFluencies = [];
+        sessionWordsExtracted = [];
+
         toggleSessionBtn.innerHTML = '<span class="btn-icon">⏹️</span> Stop Session';
         toggleSessionBtn.classList.replace('btn-primary', 'btn-danger');
         interruptBtn.disabled = false;
@@ -176,6 +187,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (audioContext) audioContext.close();
         rimeAudioPlayer.pause();
+
+        // Show session summary modal if at least 1 turn was practiced
+        if (sessionTurnsCount > 0) {
+            showSessionSummary();
+        }
     }
 
     // Microphone & Speech Recognition setup
@@ -527,9 +543,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const badge = isStruggling ? `ADAPTED (${speed}x)` : `SPEAKING (${speed}x)`;
         const text = isStruggling ? `Bilingual explanation at ${speed}x speed...` : `Speaking ${data.target_language} + ${data.native_language}...`;
 
-        setTutorState(stateName, emoji, badge, text);
+        // Track session stats
+        sessionTurnsCount++;
+        sessionFluencies.push(data.fluency_score || 100);
+        if (data.vocab_word) {
+            const alreadyInSession = sessionWordsExtracted.some(w => w.word.toLowerCase() === data.vocab_word.toLowerCase());
+            if (!alreadyInSession) {
+                sessionWordsExtracted.push({ word: data.vocab_word, translation: data.vocab_translation || '' });
+            }
+        }
 
-        appendChatBubble('tutor', data.reply_text, isStruggling, speed, data.target_language);
+        appendChatBubble('tutor', data.reply_text, isStruggling, speed, data.target_language, data.correction);
 
         if (data.audio_url) {
             lastReplyText = data.reply_text;
@@ -609,7 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 600);
     });
 
-    function appendChatBubble(sender, text, isAdapted = false, speed = 1.0, lang = '') {
+    function appendChatBubble(sender, text, isAdapted = false, speed = 1.0, lang = '', correction = '') {
         const bubble = document.createElement('div');
         bubble.className = `message-bubble ${sender} ${isAdapted ? 'adapted' : ''}`;
 
@@ -640,8 +664,79 @@ document.addEventListener('DOMContentLoaded', () => {
 
         bubble.appendChild(meta);
         bubble.appendChild(content);
+
+        // Render gentle grammar/phrasing correction tip if provided
+        if (correction && correction.trim()) {
+            const corrDiv = document.createElement('div');
+            corrDiv.className = 'msg-correction';
+            corrDiv.innerHTML = `<span class="msg-correction-icon">💡</span> <span>${correction}</span>`;
+            bubble.appendChild(corrDiv);
+        }
+
         chatStream.appendChild(bubble);
         chatStream.scrollTop = chatStream.scrollHeight;
+    }
+
+    // ── Session Summary Modal Logic ──
+    const sessionSummaryModal = document.getElementById('sessionSummaryModal');
+    const closeSummaryBtn = document.getElementById('closeSummaryBtn');
+    const continuePracticeBtn = document.getElementById('continuePracticeBtn');
+
+    function showSessionSummary() {
+        if (!sessionSummaryModal) return;
+        const durationSec = Math.max(1, Math.round((Date.now() - (sessionStartTime || Date.now())) / 1000));
+        const mins = Math.floor(durationSec / 60);
+        const secs = durationSec % 60;
+        document.getElementById('summaryDuration').textContent = `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+        document.getElementById('summaryTurns').textContent = sessionTurnsCount;
+
+        const avgFluency = sessionFluencies.length > 0
+            ? Math.round(sessionFluencies.reduce((a, b) => a + b, 0) / sessionFluencies.length)
+            : 100;
+        document.getElementById('summaryAvgFluency').textContent = `${avgFluency}%`;
+        document.getElementById('summaryWordsCount').textContent = sessionWordsExtracted.length;
+
+        const feedbackEl = document.getElementById('summaryFeedback');
+        const greetingEl = document.getElementById('summaryGreeting');
+        if (avgFluency >= 85) {
+            greetingEl.textContent = 'Outstanding Fluency! 🌟';
+            feedbackEl.textContent = 'You spoke with natural confidence, great pronunciation, and minimal hesitation.';
+        } else if (avgFluency >= 65) {
+            greetingEl.textContent = 'Great Practice Session! 👍';
+            feedbackEl.textContent = 'Good communication rhythm! Keep practicing to build confidence and speed.';
+        } else {
+            greetingEl.textContent = 'Good Effort Today! 🌱';
+            feedbackEl.textContent = 'Cadence adapted its speed to support your learning. Every turn counts!';
+        }
+
+        const wordsListEl = document.getElementById('summaryWordsList');
+        wordsListEl.innerHTML = '';
+        if (sessionWordsExtracted.length > 0) {
+            sessionWordsExtracted.forEach(item => {
+                const chip = document.createElement('div');
+                chip.className = 'summary-word-chip';
+                chip.innerHTML = `<strong>${item.word}</strong>: ${item.translation}`;
+                wordsListEl.appendChild(chip);
+            });
+            document.getElementById('summaryWordsSection').style.display = 'block';
+        } else {
+            document.getElementById('summaryWordsSection').style.display = 'none';
+        }
+
+        sessionSummaryModal.style.display = 'flex';
+        appendLog(`[SESSION] Summary generated: ${sessionTurnsCount} turns, ${avgFluency}% avg fluency.`);
+    }
+
+    if (closeSummaryBtn) {
+        closeSummaryBtn.addEventListener('click', () => {
+            sessionSummaryModal.style.display = 'none';
+        });
+    }
+    if (continuePracticeBtn) {
+        continuePracticeBtn.addEventListener('click', () => {
+            sessionSummaryModal.style.display = 'none';
+            startSession();
+        });
     }
 
     function appendLog(msg) {

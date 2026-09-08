@@ -15,6 +15,7 @@ def parse_llm_json(raw_text: str):
         data = json.loads(cleaned)
         return {
             "reply_text": data.get("reply_text", raw_text),
+            "correction": data.get("correction", ""),
             "vocab_word": data.get("vocab_word", ""),
             "vocab_translation": data.get("vocab_translation", ""),
             "vocab_phonetic": data.get("vocab_phonetic", "")
@@ -22,6 +23,7 @@ def parse_llm_json(raw_text: str):
     except Exception:
         return {
             "reply_text": raw_text,
+            "correction": "",
             "vocab_word": "",
             "vocab_translation": "",
             "vocab_phonetic": ""

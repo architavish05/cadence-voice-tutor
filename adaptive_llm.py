@@ -29,10 +29,12 @@ RULES FOR ALL RESPONSES:
 1. Always reply in {target_language} first, then add the {native_language} translation in parentheses.
 2. Keep replies SHORT — max 2 sentences.
 3. Extract 1 key vocabulary word from your reply.
+4. GRAMMAR & PHRASING CORRECTION: If the student made a noticeable grammar, tense, or phrasing error when speaking {target_language}, provide a gentle, constructive 1-line tip in "correction" with an explanation in {native_language} (e.g. "💡 Tip: Say 'I went' instead of 'I goes'."). If there were no errors or they spoke in {native_language}, set "correction" to "".
 
 Respond ONLY in valid JSON:
 {{
   "reply_text": "{target_language} reply here. ({native_language} translation here)",
+  "correction": "Gentle grammar fix if user made an error in {target_language}, else empty string",
   "vocab_word": "KeyWord",
   "vocab_translation": "{native_language} meaning",
   "vocab_phonetic": "pronunciation guide"
@@ -53,10 +55,12 @@ RULES:
 1. Use only 3-5 word sentences in {target_language}.
 2. Always add {native_language} explanation in parentheses.
 3. Be warm and encouraging.
+4. If the student made an obvious grammar mistake in {target_language}, put a brief supportive tip in "correction", else "".
 
 Respond ONLY in valid JSON:
 {{
   "reply_text": "Simple {target_language} sentence. ({native_language} explanation)",
+  "correction": "Simple supportive tip if error detected, else empty string",
   "vocab_word": "SimpleWord",
   "vocab_translation": "{native_language} meaning",
   "vocab_phonetic": "pronunciation"

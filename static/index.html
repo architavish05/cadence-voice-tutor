@@ -236,6 +236,52 @@
     <!-- Hidden Audio Player -->
     <audio id="rimeAudioPlayer" style="display: none;"></audio>
 
+    <!-- Session Summary Modal Dialog -->
+    <div id="sessionSummaryModal" class="modal-backdrop" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span class="modal-badge">🎉 SESSION SUMMARY</span>
+                <button id="closeSummaryBtn" class="btn-icon-only" title="Close">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="summary-hero">
+                    <div class="summary-avatar">🏆</div>
+                    <h3 id="summaryGreeting">Awesome Practice Session!</h3>
+                    <p id="summaryFeedback">You made steady progress communicating today.</p>
+                </div>
+                <div class="summary-stats-grid">
+                    <div class="summary-stat-box">
+                        <span class="stat-label">Duration</span>
+                        <strong id="summaryDuration" class="stat-val">0m 00s</strong>
+                    </div>
+                    <div class="summary-stat-box">
+                        <span class="stat-label">Turns Practiced</span>
+                        <strong id="summaryTurns" class="stat-val">0</strong>
+                    </div>
+                    <div class="summary-stat-box">
+                        <span class="stat-label">Avg Fluency</span>
+                        <strong id="summaryAvgFluency" class="stat-val green">0%</strong>
+                    </div>
+                    <div class="summary-stat-box">
+                        <span class="stat-label">Words Learned</span>
+                        <strong id="summaryWordsCount" class="stat-val purple">0</strong>
+                    </div>
+                </div>
+                <div id="summaryWordsSection" class="summary-words-section">
+                    <div class="words-title">Vocabulary Extracted This Session:</div>
+                    <div id="summaryWordsList" class="summary-words-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="continuePracticeBtn" class="btn btn-primary" style="width: 100%;">
+                    Continue Learning 🚀
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/app.js"></script>
 </body>
 </html>

@@ -43,6 +43,22 @@ LANG_CODES = {
     "Chinese": "zh"    # TTS will fallback to "en"
 }
 
+def cleanup_old_audio(directory="audio_output", max_age_seconds=600):
+    """Clean up generated audio files older than 10 minutes to prevent storage bloat."""
+    try:
+        now = time.time()
+        if os.path.exists(directory):
+            for fname in os.listdir(directory):
+                if fname.endswith(".mp3"):
+                    fpath = os.path.join(directory, fname)
+                    if os.path.isfile(fpath) and (now - os.path.getmtime(fpath) > max_age_seconds):
+                        try:
+                            os.remove(fpath)
+                        except Exception:
+                            pass
+    except Exception:
+        pass
+
 def get_tts_lang(lang_code: str) -> str:
     """Return Rime-compatible lang code, falling back to 'en' for unsupported langs."""
     return lang_code if lang_code in RIME_SUPPORTED else "en"
@@ -103,12 +119,16 @@ async def process_turn_api(req: TurnRequest):
         # 5. Log Evidence
         log_turn(transcript, hesitation, reply_text, speed)
 
+        # 6. Auto-cleanup audio older than 10 minutes
+        cleanup_old_audio()
+
         return JSONResponse({
             "status": "success",
             "user_transcript": transcript,
             "hesitation": hesitation,
             "fluency_score": fluency_score,
             "reply_text": reply_text,
+            "correction": llm_data.get("correction", ""),
             "vocab_word": llm_data["vocab_word"],
             "vocab_translation": llm_data["vocab_translation"],
             "vocab_phonetic": llm_data["vocab_phonetic"],
