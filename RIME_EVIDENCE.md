@@ -145,3 +145,64 @@ This supports **9 language pairs** and auto-extracts vocabulary flashcards per t
 | Vocabulary flashcard extraction | Auto-extracted per turn | VERIFIED |
 | Persistent progress tracking | localStorage: streak, words, turns, fluency | VERIFIED |
 | Web app with live dashboard | FastAPI + Web Speech API STT + Rime TTS | VERIFIED |
+
+---
+
+## 8. Repeatable Acceptance Test
+
+### Python Preflight — No Server Required
+
+```python
+# python test_rime.py
+import os, requests
+from dotenv import load_dotenv
+load_dotenv()
+key = os.getenv("RIME_API_KEY")
+r = requests.post("https://users.rime.ai/v1/rime-tts",
+    json={"speaker": "astra", "text": "Rime integration verified.", "modelId": "coda", "lang": "en", "speed": 1.0},
+    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json", "Accept": "audio/mpeg"})
+print("STATUS:", r.status_code, "PASS" if r.status_code == 200 else "FAIL:", r.text[:200])
+```
+
+Run: `.venv\Scripts\python.exe test_rime.py` → Expected: `STATUS: 200 PASS`
+
+### Live API Tests (server must be running)
+
+```bash
+# Adaptive speed test — hesitation triggers 0.75x Rime speed
+curl -X POST http://localhost:8000/api/process_turn \
+  -H "Content-Type: application/json" \
+  -d "{\"transcript\": \"um uh I don't understand\", \"target_language\": \"Spanish\", \"native_language\": \"English\", \"scenario\": \"General\", \"speaker\": \"astra\", \"history\": []}"
+
+# Expected: {"speed": 0.75, "hesitation": {"struggle": true}, "audio_url": "/audio/reply_*.mp3"}
+
+# Slow-mo re-synthesis at 0.5x
+curl -X POST http://localhost:8000/api/slowmo \
+  -H "Content-Type: application/json" \
+  -d "{\"text\": \"Hola buenos dias\", \"target_language\": \"Spanish\", \"speaker\": \"astra\"}"
+
+# Pronunciation Coach TTS
+curl -X POST http://localhost:8000/api/pronounce \
+  -H "Content-Type: application/json" \
+  -d "{\"text\": \"Gracias\", \"target_language\": \"Spanish\", \"speaker\": \"astra\"}"
+```
+
+### Korean/Chinese Graceful Fallback Test
+```bash
+curl -X POST http://localhost:8000/api/process_turn \
+  -H "Content-Type: application/json" \
+  -d "{\"transcript\": \"Hello\", \"target_language\": \"Korean\", \"native_language\": \"English\", \"scenario\": \"General\", \"speaker\": \"astra\", \"history\": []}"
+# Expected: 200 OK (uses lang=en internally — no crash)
+```
+
+---
+
+## 9. New Features — v2 (All Rime TTS Powered)
+
+| Feature | Rime Role |
+|---|---|
+| 🎙️ **Pronunciation Coach** | Plays phrase via Rime `/api/pronounce` → user repeats → STT captures → fuzzy match score shown |
+| 🎤 **Voice Persona Switcher** | UI dropdown changes `speaker` field: `astra`, `luna`, `celeste`, `petal`, `masonry`, `albion` |
+| 📥 **Flashcard CSV Export** | Session vocab → `.csv` download (Anki/Quizlet compatible) |
+| 🏆 **Scenario Quests** | Gamified mission goals per scenario — keyword heuristic marks quest complete with toast |
+

@@ -49,6 +49,45 @@ Browser (index.html + app.js)
 
 ---
 
+## Rime TTS — Exact Configuration
+
+| Parameter | Value |
+|---|---|
+| **API Endpoint** | `https://users.rime.ai/v1/rime-tts` |
+| **Model ID** | `coda` |
+| **Default Speaker** | `astra` |
+| **Available Speakers** | `astra`, `luna`, `celeste`, `petal`, `masonry`, `albion` |
+| **Languages** | `en`, `hi`, `es`, `fr`, `de`, `it`, `ja` (+ `en` fallback for `ko`, `zh`) |
+| **Audio Format** | `audio/mpeg` (MP3) |
+| **Transport** | HTTP POST via persistent `requests.Session()` (connection pooling) |
+| **Accept Header** | `Accept: audio/mpeg` |
+| **Normal Speed** | `1.0` |
+| **Struggle Speed** | `0.75` (auto-adapted when hesitation score ≥ 2) |
+| **Slow-Mo Speed** | `0.5` (user-triggered per message) |
+
+---
+
+## Third-Party Services
+
+| Service | Purpose | SDK / Endpoint |
+|---|---|---|
+| **Rime TTS** | Voice synthesis — all audio output | `https://users.rime.ai/v1/rime-tts` (REST) |
+| **Google Gemini** | Bilingual LLM replies + vocab extraction | `gemini-flash-lite-latest` via `google-genai` SDK |
+| **Deepgram** | Fallback STT (Push-to-Talk mode) | REST API — `nova-2-general` model |
+| **Browser Web Speech API** | Primary real-time STT | Built-in browser API (Chrome/Edge) |
+
+---
+
+## Known Limitations & Failure Behavior
+
+| Limitation | Behavior |
+|---|---|
+| Korean (`ko`) / Chinese (`zh`) not in Rime's supported lang list | Graceful fallback — uses `"lang": "en"` automatically, no crash |
+| Gemini free tier rate limit (429) | Falls back: `gemini-flash-lite-latest` → `gemini-flash-latest` → `gemini-3.6-flash` |
+| Web Speech API not available on Firefox | Shows error in log; PTT Deepgram mode still works |
+| Deepgram STT requires audio blob > 0 bytes | Returns empty transcript gracefully, session continues |
+| No HTTPS in local dev | Web Speech API requires Chrome to have mic permission granted once |
+
 ## Supported Languages
 
 | Language | Learn | Native | Rime TTS |
