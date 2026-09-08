@@ -2,6 +2,7 @@
 
 **Challenge:** DataForge (IIT Kharagpur) x Rime "Voice AI" Challenge
 **Project:** Cadence — Adaptive Multilingual Voice Language Tutor
+**Demo Video:** [Watch 4-Min Demo on Loom](https://www.loom.com/share/c412431a78474022bdeada46b5515bf7)
 **Supported Languages:** English, Hindi, Spanish, French, German, Italian, Japanese, Korean, Chinese
 
 ---

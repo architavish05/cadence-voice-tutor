@@ -2,6 +2,12 @@
 
 > **DataForge (IIT Kharagpur) x Rime "Voice AI" Challenge Submission**
 
+[![Demo Video](https://img.shields.io/badge/🎬%20Watch%20Demo-Loom%20Video-blue?style=for-the-badge&logo=loom)](https://www.loom.com/share/c412431a78474022bdeada46b5515bf7)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-purple?style=for-the-badge&logo=github)](https://github.com/architavish05/cadence-voice-tutor)
+
+## 🎬 4-Minute Demo Video
+🎥 **[Click here to watch the full walkthrough on Loom](https://www.loom.com/share/c412431a78474022bdeada46b5515bf7)**
+
 Cadence is a real-time adaptive multilingual voice tutor that teaches any language to anyone — in their own native language. Speak in Hindi, get taught in English. Speak in English, get taught in Japanese. Cadence detects struggle, adapts its speech speed, and explains bilingually so learners are never left behind.
 
 ---
