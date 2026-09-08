@@ -62,6 +62,19 @@
                     </select>
                 </div>
 
+                <!-- Voice Persona Switcher -->
+                <div class="status-chip persona-chip">
+                    <span class="icon">🎤</span> Voice:
+                    <select id="voicePersonaSelect" class="lang-select">
+                        <option value="astra" selected>👩 Astra</option>
+                        <option value="luna">🌙 Luna</option>
+                        <option value="celeste">✨ Celeste</option>
+                        <option value="petal">🌸 Petal</option>
+                        <option value="masonry">🏔️ Masonry</option>
+                        <option value="albion">🎩 Albion</option>
+                    </select>
+                </div>
+
                 <div id="connectionStatus" class="status-chip connection">
                     <span class="dot gray"></span> Idle
                 </div>
@@ -187,9 +200,22 @@
                     </div>
                 </div>
 
+                <!-- 🎯 Active Scenario Quest Banner -->
+                <div id="questBanner" class="quest-banner" style="display:none;">
+                    <div class="quest-header">
+                        <span class="quest-icon" id="questIcon">🎯</span>
+                        <span class="quest-title">Mission</span>
+                        <span id="questStatusBadge" class="quest-badge quest-active">IN PROGRESS</span>
+                    </div>
+                    <p id="questDescription" class="quest-desc">Loading quest...</p>
+                </div>
+
                 <div class="card-header" style="margin-top:0.75rem;">
                     <h2>Live Vocabulary Flashcards</h2>
-                    <span class="badge live">AUTO-EXTRACT</span>
+                    <div style="display:flex;gap:0.4rem;align-items:center;">
+                        <button id="exportFlashcardsBtn" class="btn-icon-only" title="Export to CSV study sheet">⬇️ Export</button>
+                        <span class="badge live">AUTO-EXTRACT</span>
+                    </div>
                 </div>
 
                 <!-- Vocabulary Flashcard Panel -->
@@ -283,5 +309,61 @@
     </div>
 
     <script src="/static/app.js"></script>
+
+    <!-- Pronunciation Coach Modal -->
+    <div id="pronounceModal" class="modal-backdrop" style="display:none;">
+        <div class="modal-card pronounce-card">
+            <div class="modal-header">
+                <span class="modal-badge">🎙️ PRONUNCIATION COACH</span>
+                <button id="closePronounceBtn" class="btn-icon-only">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="pronounce-label">Listen first, then repeat:</p>
+                <div class="pronounce-target-box">
+                    <span id="pronounceTargetText" class="pronounce-target-word">—</span>
+                </div>
+
+                <div class="pronounce-controls">
+                    <button id="pronounceListenBtn" class="btn btn-primary">
+                        🔊 Listen to Cadence
+                    </button>
+                    <button id="pronounceTryBtn" class="btn btn-secondary" disabled>
+                        🎙️ Now You Say It
+                    </button>
+                </div>
+
+                <div id="pronounceStatus" class="pronounce-status">
+                    Press <strong>Listen</strong> to hear the correct pronunciation.
+                </div>
+
+                <div id="pronounceResultBox" class="pronounce-result-box" style="display:none;">
+                    <div class="result-score-row">
+                        <span class="result-label">Match Score</span>
+                        <strong id="pronounceScore" class="result-score">—</strong>
+                    </div>
+                    <div class="result-feedback-row">
+                        <span id="pronounceFeedback" class="result-feedback">—</span>
+                    </div>
+                    <div class="result-compare-row">
+                        <span class="compare-label">You said:</span>
+                        <span id="pronounceYouSaid" class="compare-val">—</span>
+                    </div>
+                    <button id="pronounceTryAgainBtn" class="btn btn-secondary" style="margin-top:0.6rem;width:100%;">
+                        🔄 Try Again
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quest Complete Toast -->
+    <div id="questCompleteToast" class="quest-toast" style="display:none;">
+        <span class="toast-icon">🎯</span>
+        <div class="toast-body">
+            <strong>Quest Complete!</strong>
+            <span id="questToastMsg">Mission accomplished!</span>
+        </div>
+    </div>
+
 </body>
 </html>

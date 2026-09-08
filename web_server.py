@@ -14,6 +14,26 @@ from llm import get_llm_reply
 from tts import synthesize
 from evidence_logger import log_turn
 
+def _synth_with_speaker(text: str, speed: float = 1.0, lang: str = "en", output_path: str = None, speaker: str = "astra") -> str:
+    """Synthesize audio with a specific Rime voice persona."""
+    import os, time as _t
+    from dotenv import load_dotenv
+    load_dotenv()
+    import requests as _req
+    RIME_API_KEY = os.getenv("RIME_API_KEY")
+    url = "https://users.rime.ai/v1/rime-tts"
+    data = {"speaker": speaker, "text": text, "modelId": "coda", "lang": lang, "speed": speed}
+    headers = {"Authorization": f"Bearer {RIME_API_KEY}", "Content-Type": "application/json", "Accept": "audio/mpeg"}
+    response = _req.post(url, json=data, headers=headers)
+    if response.status_code == 200:
+        if output_path is None:
+            output_path = f"audio_output/synth_{int(_t.time()*1000)}.mp3"
+        with open(output_path, "wb") as f:
+            f.write(response.content)
+        return output_path
+    else:
+        raise Exception(f"Rime TTS failed: {response.status_code} {response.text}")
+
 load_dotenv()
 
 app = FastAPI(title="Cadence Web API", description="Adaptive Multilingual Voice Language Tutor")
@@ -64,16 +84,33 @@ def get_tts_lang(lang_code: str) -> str:
     return lang_code if lang_code in RIME_SUPPORTED else "en"
 
 
+# Available Rime voice personas (confirmed valid on coda model)
+RIME_PERSONAS = {
+    "astra":   {"emoji": "👩", "label": "Astra",   "desc": "Warm & supportive — American female"},
+    "luna":    {"emoji": "🌙", "label": "Luna",    "desc": "Clear & expressive — American female"},
+    "celeste": {"emoji": "✨", "label": "Celeste", "desc": "Bright & friendly — American female"},
+    "petal":   {"emoji": "🌸", "label": "Petal",   "desc": "Gentle & soft — American female"},
+    "masonry": {"emoji": "🏔️", "label": "Masonry", "desc": "Deep & authoritative — Southern male"},
+    "albion":  {"emoji": "🎩", "label": "Albion",  "desc": "Formal & articulate — British male"},
+}
+
 class TurnRequest(BaseModel):
     transcript: str
     target_language: str = "English"
     native_language: str = "Hindi"
     scenario: str = "General"
     history: list = []
+    speaker: str = "astra"
 
 class SlowMoRequest(BaseModel):
     text: str
     target_language: str = "English"
+    speaker: str = "astra"
+
+class PronounceRequest(BaseModel):
+    text: str
+    target_language: str = "English"
+    speaker: str = "astra"
 
 @app.get("/")
 async def root():
@@ -87,6 +124,7 @@ async def process_turn_api(req: TurnRequest):
         native_lang = req.native_language
         scenario = req.scenario
         history = req.history
+        speaker = req.speaker if req.speaker in RIME_PERSONAS else "astra"
         lang_code = LANG_CODES.get(target_lang, "en")
 
         if not transcript:
@@ -106,12 +144,12 @@ async def process_turn_api(req: TurnRequest):
         llm_data = get_llm_reply(llm_client, transcript, system_prompt, history=history)
         reply_text = llm_data["reply_text"]
 
-        # 3. Synthesize Rime Audio
+        # 3. Synthesize Rime Audio with selected persona
         speed = 0.75 if struggling else 1.0
         audio_filename = f"reply_{int(time.time()*1000)}.mp3"
         audio_path = os.path.join("audio_output", audio_filename)
         
-        synthesize(reply_text, speed=speed, lang=get_tts_lang(lang_code), output_path=audio_path)
+        _synth_with_speaker(reply_text, speed=speed, lang=get_tts_lang(lang_code), output_path=audio_path, speaker=speaker)
 
         # 4. Calculate Fluency Score (0-100%)
         fluency_score = max(20, 100 - (hesitation["score"] * 20))
@@ -149,11 +187,26 @@ async def slowmo_api(req: SlowMoRequest):
     try:
         text = req.text.strip()
         lang_code = LANG_CODES.get(req.target_language, "en")
+        speaker = req.speaker if req.speaker in RIME_PERSONAS else "astra"
         audio_filename = f"slowmo_{int(time.time()*1000)}.mp3"
         audio_path = os.path.join("audio_output", audio_filename)
         
-        synthesize(text, speed=0.5, lang=get_tts_lang(lang_code), output_path=audio_path)
+        _synth_with_speaker(text, speed=0.5, lang=get_tts_lang(lang_code), output_path=audio_path, speaker=speaker)
         return JSONResponse({"audio_url": f"/audio/{audio_filename}"})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/pronounce")
+async def pronounce_api(req: PronounceRequest):
+    """Synthesize a word/phrase for Pronunciation Coach shadowing practice."""
+    try:
+        text = req.text.strip()
+        lang_code = LANG_CODES.get(req.target_language, "en")
+        speaker = req.speaker if req.speaker in RIME_PERSONAS else "astra"
+        audio_filename = f"pronounce_{int(time.time()*1000)}.mp3"
+        audio_path = os.path.join("audio_output", audio_filename)
+        _synth_with_speaker(text, speed=0.85, lang=get_tts_lang(lang_code), output_path=audio_path, speaker=speaker)
+        return JSONResponse({"audio_url": f"/audio/{audio_filename}", "text": text})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

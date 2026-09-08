@@ -1013,3 +1013,243 @@ canvas {
 .summary-word-chip strong {
     color: var(--accent-green);
 }
+
+/* ── Quest Banner ── */
+.quest-banner {
+    margin-top: 0.75rem;
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(52, 211, 153, 0.08));
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-radius: 12px;
+    padding: 0.75rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.quest-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.quest-icon { font-size: 1.1rem; }
+
+.quest-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    flex: 1;
+}
+
+.quest-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.15rem 0.55rem;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+}
+
+.quest-active {
+    background: rgba(168, 85, 247, 0.2);
+    color: var(--accent-indigo);
+    border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+.quest-complete {
+    background: rgba(52, 211, 153, 0.2);
+    color: var(--accent-green);
+    border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.quest-desc {
+    font-size: 0.78rem;
+    color: var(--text-main);
+    line-height: 1.4;
+    margin: 0;
+}
+
+/* ── Flashcard Practice Button ── */
+.btn-practice {
+    background: rgba(168, 85, 247, 0.12);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    color: var(--accent-indigo);
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.btn-practice:hover {
+    background: rgba(168, 85, 247, 0.25);
+}
+
+/* ── Pronunciation Coach Modal ── */
+.pronounce-card {
+    max-width: 440px;
+}
+
+.pronounce-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    margin-top: 0;
+}
+
+.pronounce-target-box {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.pronounce-target-word {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.35;
+}
+
+.pronounce-controls {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 0.85rem;
+}
+
+.pronounce-controls button {
+    flex: 1;
+    padding: 0.6rem;
+}
+
+.pronounce-status {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    text-align: center;
+    min-height: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.pronounce-result-box {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.result-score-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.result-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.result-score {
+    font-size: 1.5rem;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--accent-green);
+}
+
+.result-score.amber { color: var(--accent-amber); }
+.result-score.red { color: var(--accent-red); }
+
+.result-feedback {
+    font-size: 0.8rem;
+    color: var(--text-main);
+    font-weight: 500;
+}
+
+.result-compare-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    font-size: 0.75rem;
+}
+
+.compare-label {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.compare-val {
+    color: var(--accent-indigo);
+    font-style: italic;
+}
+
+/* ── Quest Complete Toast ── */
+.quest-toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(8px);
+    background: linear-gradient(135deg, rgba(52, 211, 153, 0.95), rgba(168, 85, 247, 0.9));
+    border-radius: 16px;
+    padding: 0.85rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(52, 211, 153, 0.4);
+    z-index: 10000;
+    animation: toastSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    cursor: pointer;
+}
+
+@keyframes toastSlideIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(24px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.toast-icon { font-size: 1.6rem; }
+
+.toast-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.toast-body strong {
+    font-size: 0.95rem;
+    color: #fff;
+}
+
+.toast-body span {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* ── btn secondary ── */
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 0.6rem 1rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-secondary:hover {
+    background: rgba(168, 85, 247, 0.15);
+    border-color: rgba(168, 85, 247, 0.4);
+}
+
+.btn-secondary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}

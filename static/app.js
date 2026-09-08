@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const targetLangSelect = document.getElementById('targetLanguageSelect');
     const nativeLangSelect = document.getElementById('nativeLanguageSelect');
     const scenarioSelect = document.getElementById('scenarioSelect');
+    const voicePersonaSelect = document.getElementById('voicePersonaSelect');
 
     // Telemetry & Flashcard Elements
     const speedVal = document.getElementById('speedVal');
@@ -483,9 +484,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         appendLog(`[USER] "${text}"`);
 
+        // Check quest progress on this turn
+        if (window._checkQuestOnTurn) window._checkQuestOnTurn(text);
+
         const targetLang = targetLangSelect ? targetLangSelect.value : 'English';
         const nativeLang = nativeLangSelect ? nativeLangSelect.value : 'Hindi';
         const scenario = scenarioSelect ? scenarioSelect.value : 'General';
+        const speaker = voicePersonaSelect ? voicePersonaSelect.value : 'astra';
         const historyPayload = conversationHistory.slice(-6);
 
         // Record user turn in local history
@@ -500,6 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     target_language: targetLang,
                     native_language: nativeLang,
                     scenario: scenario,
+                    speaker: speaker,
                     history: historyPayload
                 })
             });
@@ -588,13 +594,27 @@ document.addEventListener('DOMContentLoaded', () => {
         flashcardStore.forEach(card => {
             const item = document.createElement('div');
             item.className = 'flashcard-item';
-            item.innerHTML = `
-                <div>
-                    <span class="flashcard-word">${card.word}</span>
-                    ${card.phonetic ? `<small style="color:var(--text-muted);"> (${card.phonetic})</small>` : ''}
-                </div>
-                <span class="flashcard-trans">➔ ${card.translation}</span>
+
+            // Safe Practice button — for Pronunciation Coach
+            const practiceBtn = document.createElement('button');
+            practiceBtn.className = 'btn-practice';
+            practiceBtn.title = 'Practice pronouncing this word';
+            practiceBtn.textContent = '🎙️ Practice';
+            practiceBtn.addEventListener('click', () => openPronounceModal(card.word));
+
+            const textDiv = document.createElement('div');
+            textDiv.innerHTML = `
+                <span class="flashcard-word">${card.word}</span>
+                ${card.phonetic ? `<small style="color:var(--text-muted);"> (${card.phonetic})</small>` : ''}
             `;
+
+            const transSpan = document.createElement('span');
+            transSpan.className = 'flashcard-trans';
+            transSpan.textContent = `➔ ${card.translation}`;
+
+            item.appendChild(textDiv);
+            item.appendChild(transSpan);
+            item.appendChild(practiceBtn);
             flashcardsPanel.appendChild(item);
         });
     }
@@ -602,12 +622,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Slow-Mo Replay Trigger (0.5x)
     window.playSlowMo = async function(text) {
         const targetLang = targetLangSelect ? targetLangSelect.value : 'English';
+        const speaker = voicePersonaSelect ? voicePersonaSelect.value : 'astra';
         appendLog(`[SLOW-MO] Synthesizing 0.5x ultra-slow audio for: "${text}"...`);
         try {
             const res = await fetch('/api/slowmo', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text, target_language: targetLang })
+                body: JSON.stringify({ text: text, target_language: targetLang, speaker: speaker })
             });
             const data = await res.json();
             if (data.audio_url) {
@@ -746,4 +767,310 @@ document.addEventListener('DOMContentLoaded', () => {
         logTerminal.textContent = lines.join('\n') + `\n[${time}] ${msg}`;
         logTerminal.scrollTop = logTerminal.scrollHeight;
     }
+
+    // ═══════════════════════════════════════════════════
+    // 🏆 FEATURE 4 — Scenario Quests / Missions
+    // ═══════════════════════════════════════════════════
+    const SCENARIO_QUESTS = {
+        'General':    { icon: '💬', desc: 'Introduce yourself and have a natural conversation in your target language.' },
+        'Cafe':       { icon: '☕', desc: 'Order a drink, ask for the price, and request the bill — all in your target language!' },
+        'Travel':     { icon: '✈️', desc: 'Ask about flight gate, check-in time, and find the baggage claim area.' },
+        'Interview':  { icon: '💼', desc: 'Tell the interviewer about yourself and answer "What is your biggest strength?"' },
+        'Directions': { icon: '🚕', desc: 'Ask a stranger how to get to the nearest train station or hospital.' },
+    };
+
+    let questComplete = false;
+
+    function updateQuestBanner(scenario) {
+        const questBanner = document.getElementById('questBanner');
+        const questIcon = document.getElementById('questIcon');
+        const questDesc = document.getElementById('questDescription');
+        const questBadge = document.getElementById('questStatusBadge');
+        if (!questBanner) return;
+
+        const q = SCENARIO_QUESTS[scenario] || SCENARIO_QUESTS['General'];
+        questIcon.textContent = q.icon;
+        questDesc.textContent = q.desc;
+        questBadge.textContent = 'IN PROGRESS';
+        questBadge.className = 'quest-badge quest-active';
+        questBanner.style.display = 'flex';
+        questComplete = false;
+    }
+
+    function markQuestComplete(scenario) {
+        if (questComplete) return; // Already celebrated
+        questComplete = true;
+
+        const questBadge = document.getElementById('questStatusBadge');
+        if (questBadge) {
+            questBadge.textContent = 'COMPLETE ✓';
+            questBadge.className = 'quest-badge quest-complete';
+        }
+
+        // Show toast
+        const toast = document.getElementById('questCompleteToast');
+        const toastMsg = document.getElementById('questToastMsg');
+        if (toast) {
+            toastMsg.textContent = SCENARIO_QUESTS[scenario]?.desc?.split(' ').slice(0,5).join(' ') + '... accomplished!';
+            toast.style.display = 'flex';
+            toast.style.animation = 'none';
+            toast.offsetHeight; // reflow
+            toast.style.animation = 'toastSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+            setTimeout(() => { toast.style.display = 'none'; }, 4000);
+        }
+
+        appendLog(`[QUEST] 🏆 Quest Complete! Scenario: ${scenario}`);
+    }
+
+    // Quest detection: keyword + turn count heuristic (no LLM needed for speed)
+    const QUEST_KEYWORDS = {
+        'Cafe':       ['bill', 'receipt', 'price', 'cost', 'how much', 'order', 'coffee', 'tea', 'drink', 'menu'],
+        'Travel':     ['gate', 'check-in', 'baggage', 'flight', 'ticket', 'passport', 'boarding', 'terminal'],
+        'Interview':  ['strength', 'weakness', 'experience', 'work', 'skill', 'team', 'goal', 'challenge'],
+        'Directions': ['station', 'hospital', 'turn', 'straight', 'left', 'right', 'km', 'bus', 'metro', 'walk'],
+    };
+
+    function checkQuestProgress(userText, scenario) {
+        if (questComplete) return;
+        const keywords = QUEST_KEYWORDS[scenario] || [];
+        const lower = userText.toLowerCase();
+        const matched = keywords.filter(k => lower.includes(k));
+        if (matched.length >= 2 || (scenario === 'General' && sessionTurnsCount >= 5)) {
+            markQuestComplete(scenario);
+        }
+    }
+
+    // Trigger quest banner on scenario change and on session start
+    if (scenarioSelect) {
+        // Update quest banner when scenario changes (in addition to clearing history)
+        scenarioSelect.addEventListener('change', () => {
+            if (isSessionActive) updateQuestBanner(scenarioSelect.value);
+        });
+    }
+
+    // Hook into submitUtterance to check quest progress after each user turn
+    window._checkQuestOnTurn = function(text) {
+        const scenario = scenarioSelect ? scenarioSelect.value : 'General';
+        checkQuestProgress(text, scenario);
+    };
+
+    // ═══════════════════════════════════════════════════
+    // 📥 FEATURE 3 — 1-Click Flashcard CSV Export
+    // ═══════════════════════════════════════════════════
+    const exportFlashcardsBtn = document.getElementById('exportFlashcardsBtn');
+    if (exportFlashcardsBtn) {
+        exportFlashcardsBtn.addEventListener('click', () => {
+            if (flashcardStore.length === 0 && sessionWordsExtracted.length === 0) {
+                alert('No vocabulary words collected yet! Keep practicing and words will appear here.');
+                return;
+            }
+
+            // Merge flashcardStore (recent 5) with all session words
+            const allWords = {};
+            flashcardStore.forEach(c => { allWords[c.word] = c; });
+            sessionWordsExtracted.forEach(s => {
+                if (!allWords[s.word]) allWords[s.word] = { word: s.word, translation: s.translation, phonetic: '' };
+            });
+
+            const rows = [['Word', 'Translation', 'Phonetic']];
+            Object.values(allWords).forEach(c => {
+                rows.push([
+                    `"${(c.word||'').replace(/"/g,'""')}"`,
+                    `"${(c.translation||'').replace(/"/g,'""')}"`,
+                    `"${(c.phonetic||'').replace(/"/g,'""')}"`
+                ]);
+            });
+
+            const csv = rows.map(r => r.join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const lang = targetLangSelect ? targetLangSelect.value.toLowerCase() : 'lang';
+            a.download = `cadence_vocab_${lang}_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            appendLog(`[EXPORT] Downloaded ${Object.keys(allWords).length} vocab words as CSV.`);
+        });
+    }
+
+    // ═══════════════════════════════════════════════════
+    // 🎯 FEATURE 1 — Pronunciation Coach (Shadowing Mode)
+    // ═══════════════════════════════════════════════════
+    const pronounceModal = document.getElementById('pronounceModal');
+    const pronounceTargetText = document.getElementById('pronounceTargetText');
+    const pronounceListenBtn = document.getElementById('pronounceListenBtn');
+    const pronounceTryBtn = document.getElementById('pronounceTryBtn');
+    const pronounceStatus = document.getElementById('pronounceStatus');
+    const pronounceResultBox = document.getElementById('pronounceResultBox');
+    const pronounceScore = document.getElementById('pronounceScore');
+    const pronounceFeedback = document.getElementById('pronounceFeedback');
+    const pronounceYouSaid = document.getElementById('pronounceYouSaid');
+    const pronounceTryAgainBtn = document.getElementById('pronounceTryAgainBtn');
+    const closePronounceBtn = document.getElementById('closePronounceBtn');
+
+    let currentPronounceTarget = '';
+    let pronounceAudio = null;
+
+    window.openPronounceModal = function(phrase) {
+        currentPronounceTarget = phrase;
+        pronounceTargetText.textContent = phrase;
+        pronounceStatus.innerHTML = 'Press <strong>Listen</strong> to hear the correct pronunciation.';
+        pronounceResultBox.style.display = 'none';
+        pronounceTryBtn.disabled = true;
+        if (pronounceModal) pronounceModal.style.display = 'flex';
+    };
+
+    if (closePronounceBtn) {
+        closePronounceBtn.addEventListener('click', () => {
+            pronounceModal.style.display = 'none';
+            if (pronounceAudio) { pronounceAudio.pause(); pronounceAudio = null; }
+        });
+    }
+
+    if (pronounceListenBtn) {
+        pronounceListenBtn.addEventListener('click', async () => {
+            if (!currentPronounceTarget) return;
+            pronounceListenBtn.disabled = true;
+            pronounceStatus.textContent = '⏳ Loading Cadence pronunciation...';
+
+            try {
+                const targetLang = targetLangSelect ? targetLangSelect.value : 'English';
+                const speaker = voicePersonaSelect ? voicePersonaSelect.value : 'astra';
+
+                const res = await fetch('/api/pronounce', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: currentPronounceTarget, target_language: targetLang, speaker: speaker })
+                });
+                const data = await res.json();
+
+                if (data.audio_url) {
+                    pronounceAudio = new Audio(data.audio_url);
+                    pronounceAudio.play();
+                    pronounceStatus.textContent = '🔊 Listen carefully to Cadence...';
+                    pronounceAudio.onended = () => {
+                        pronounceStatus.innerHTML = 'Now press <strong>Say It</strong> and repeat what you heard!';
+                        pronounceTryBtn.disabled = false;
+                        pronounceListenBtn.disabled = false;
+                    };
+                }
+            } catch (e) {
+                pronounceStatus.textContent = `⚠️ Error: ${e.message}`;
+                pronounceListenBtn.disabled = false;
+            }
+        });
+    }
+
+    if (pronounceTryBtn) {
+        pronounceTryBtn.addEventListener('click', () => {
+            pronounceTryBtn.disabled = true;
+            pronounceStatus.textContent = '🎙️ Listening... say it now!';
+            pronounceResultBox.style.display = 'none';
+
+            // Use Web Speech API for one-shot recognition
+            const lang = (targetLangSelect ? targetLangSelect.value : 'English');
+            const STT_LANG_MAP = {
+                'Hindi':'hi-IN','English':'en-US','Spanish':'es-ES','French':'fr-FR',
+                'German':'de-DE','Italian':'it-IT','Korean':'ko-KR','Japanese':'ja-JP','Chinese':'zh-CN'
+            };
+            const sttLang = STT_LANG_MAP[lang] || 'en-US';
+
+            const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            rec.lang = sttLang;
+            rec.maxAlternatives = 1;
+            rec.interimResults = false;
+
+            rec.onresult = (e) => {
+                const heard = e.results[0][0].transcript.trim();
+                const score = calcPronunciationScore(currentPronounceTarget, heard);
+                showPronounceResult(heard, score);
+            };
+
+            rec.onerror = (e) => {
+                pronounceStatus.textContent = `⚠️ Mic error: ${e.error}. Try again.`;
+                pronounceTryBtn.disabled = false;
+            };
+
+            rec.onend = () => { pronounceTryBtn.disabled = false; };
+
+            rec.start();
+            setTimeout(() => { try { rec.stop(); } catch(e) {} }, 5000);
+        });
+    }
+
+    if (pronounceTryAgainBtn) {
+        pronounceTryAgainBtn.addEventListener('click', () => {
+            pronounceResultBox.style.display = 'none';
+            pronounceStatus.innerHTML = 'Press <strong>Listen</strong> first, then try again!';
+            pronounceTryBtn.disabled = true;
+        });
+    }
+
+    function calcPronunciationScore(target, heard) {
+        // Normalize both strings
+        const normalize = s => s.toLowerCase().replace(/[^a-z\u00C0-\u024F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af ]/g, '').trim();
+        const t = normalize(target).split(' ').filter(Boolean);
+        const h = normalize(heard).split(' ').filter(Boolean);
+
+        if (t.length === 0) return 0;
+
+        // Word-level overlap match
+        let matched = 0;
+        const hSet = [...h];
+        t.forEach(tw => {
+            const idx = hSet.findIndex(hw => hw === tw || levenshtein(tw, hw) <= Math.max(1, Math.floor(tw.length * 0.3)));
+            if (idx !== -1) { matched++; hSet.splice(idx, 1); }
+        });
+        return Math.round((matched / t.length) * 100);
+    }
+
+    function levenshtein(a, b) {
+        const m = a.length, n = b.length;
+        const dp = Array.from({length: m+1}, (_, i) => Array.from({length: n+1}, (_, j) => i === 0 ? j : j === 0 ? i : 0));
+        for (let i = 1; i <= m; i++)
+            for (let j = 1; j <= n; j++)
+                dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+        return dp[m][n];
+    }
+
+    function showPronounceResult(heard, score) {
+        pronounceYouSaid.textContent = heard || '(nothing detected)';
+        pronounceScore.textContent = `${score}%`;
+
+        // Color code the score
+        pronounceScore.className = 'result-score';
+        if (score >= 80) {
+            pronounceScore.classList.add('green');
+            pronounceFeedback.textContent = score >= 95 ? '🌟 Perfect match! Excellent pronunciation!' : '🎉 Great pronunciation! Almost perfect!';
+        } else if (score >= 55) {
+            pronounceScore.classList.add('amber');
+            pronounceFeedback.textContent = '👍 Good attempt! Keep practicing the sounds.';
+        } else {
+            pronounceScore.classList.add('red');
+            pronounceFeedback.textContent = '🔄 Not quite — listen again and try once more!';
+        }
+
+        pronounceResultBox.style.display = 'flex';
+        pronounceStatus.textContent = 'Tap "Try Again" to retry or close to continue.';
+        appendLog(`[PRONOUNCE] Target: "${currentPronounceTarget}" | Heard: "${heard}" | Score: ${score}%`);
+    }
+
+    // ── Hook quest banner into session start via toggleSessionBtn ──
+    // Remove old session listener and replace with one that also shows quest
+    const _origToggleListener = toggleSessionBtn.onclick;
+    toggleSessionBtn.addEventListener('click', () => {
+        // Quest banner shows when session starts (isSessionActive was false, now true after startSession runs)
+        setTimeout(() => {
+            if (isSessionActive) {
+                const scenario = scenarioSelect ? scenarioSelect.value : 'General';
+                updateQuestBanner(scenario);
+            }
+        }, 50);
+    });
+
+    // Quest Complete Toast click to dismiss
+    const questToast = document.getElementById('questCompleteToast');
+    if (questToast) questToast.addEventListener('click', () => { questToast.style.display = 'none'; });
+
 });
