@@ -416,7 +416,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (clearChatBtn) {
         clearChatBtn.addEventListener('click', () => {
             chatStream.innerHTML = '';
-            appendLog('[CHAT] Conversation cleared.');
+            conversationHistory = [];
+            lastReplyText = '';
+            lastReplyAudioUrl = '';
+            appendLog('[CHAT] Conversation & history cleared.');
+        });
+    }
+
+    if (scenarioSelect) {
+        scenarioSelect.addEventListener('change', () => {
+            conversationHistory = [];
+            appendLog(`[SCENARIO] Switched to ${scenarioSelect.value} (memory reset).`);
         });
     }
 
@@ -424,9 +434,31 @@ document.addEventListener('DOMContentLoaded', () => {
         submitUtterance(text);
     };
 
+    // Track conversation history and last tutor reply
+    let conversationHistory = [];
+    let lastReplyText = '';
+    let lastReplyAudioUrl = '';
+
+    // Keywords that trigger local instant repeat (no API call needed)
+    const REPEAT_TRIGGERS = ['repeat', 'dobara', 'dobara bolo', 'phir se', 'again', 'say it again', 'replay', 'ek baar aur'];
+
     async function submitUtterance(text) {
         if (!text.trim()) return;
         manualTextInput.value = '';
+
+        // ── Local Repeat Handler — instant, no API call ──
+        const lower = text.trim().toLowerCase();
+        const isRepeat = REPEAT_TRIGGERS.some(t => lower.includes(t));
+        if (isRepeat && lastReplyAudioUrl) {
+            appendChatBubble('user', text);
+            appendLog('[COMMAND] Repeat detected — replaying last reply instantly!');
+            appendChatBubble('tutor', `🔁 Repeating: ${lastReplyText}`);
+            rimeAudioPlayer.src = lastReplyAudioUrl;
+            rimeAudioPlayer.play();
+            setTutorState('speaking', '🔁', 'REPEATING', 'Replaying last reply...');
+            rimeAudioPlayer.onended = () => setTutorState('listening', '🎙️', 'LISTENING', 'Listening for your speech...');
+            return;
+        }
 
         appendChatBubble('user', text);
         // Show typing indicator + processing avatar
@@ -438,6 +470,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetLang = targetLangSelect ? targetLangSelect.value : 'English';
         const nativeLang = nativeLangSelect ? nativeLangSelect.value : 'Hindi';
         const scenario = scenarioSelect ? scenarioSelect.value : 'General';
+        const historyPayload = conversationHistory.slice(-6);
+
+        // Record user turn in local history
+        conversationHistory.push({ role: 'user', text: text });
 
         try {
             const response = await fetch('/api/process_turn', {
@@ -447,7 +483,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     transcript: text,
                     target_language: targetLang,
                     native_language: nativeLang,
-                    scenario: scenario
+                    scenario: scenario,
+                    history: historyPayload
                 })
             });
 
@@ -495,6 +532,8 @@ document.addEventListener('DOMContentLoaded', () => {
         appendChatBubble('tutor', data.reply_text, isStruggling, speed, data.target_language);
 
         if (data.audio_url) {
+            lastReplyText = data.reply_text;
+            lastReplyAudioUrl = data.audio_url;
             rimeAudioPlayer.src = data.audio_url;
             rimeAudioPlayer.play();
             rimeAudioPlayer.onended = () => {
@@ -507,6 +546,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update progress tracker
         trackTurn(data.fluency_score || 100, data.vocab_word || '');
+
+        // Record tutor reply into conversation memory
+        if (data.reply_text) {
+            conversationHistory.push({ role: 'model', text: data.reply_text });
+            if (conversationHistory.length > 20) {
+                conversationHistory = conversationHistory.slice(-20);
+            }
+        }
     }
 
     function addFlashcard(word, translation, phonetic) {

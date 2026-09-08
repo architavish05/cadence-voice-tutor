@@ -53,6 +53,7 @@ class TurnRequest(BaseModel):
     target_language: str = "English"
     native_language: str = "Hindi"
     scenario: str = "General"
+    history: list = []
 
 class SlowMoRequest(BaseModel):
     text: str
@@ -69,6 +70,7 @@ async def process_turn_api(req: TurnRequest):
         target_lang = req.target_language
         native_lang = req.native_language
         scenario = req.scenario
+        history = req.history
         lang_code = LANG_CODES.get(target_lang, "en")
 
         if not transcript:
@@ -78,14 +80,14 @@ async def process_turn_api(req: TurnRequest):
         hesitation = detect_hesitation(transcript)
         struggling = hesitation["struggle"]
 
-        # 2. Generate LLM Reply with Dual-Language Prompt
+        # 2. Generate LLM Reply with Dual-Language Prompt & Multi-turn Memory
         system_prompt = build_prompt(
             target_language=target_lang,
             native_language=native_lang,
             scenario=scenario,
             struggling=struggling
         )
-        llm_data = get_llm_reply(llm_client, transcript, system_prompt)
+        llm_data = get_llm_reply(llm_client, transcript, system_prompt, history=history)
         reply_text = llm_data["reply_text"]
 
         # 3. Synthesize Rime Audio

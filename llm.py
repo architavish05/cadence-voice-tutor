@@ -8,6 +8,10 @@ def parse_llm_json(raw_text: str):
         # Clean markdown codeblocks ```json ... ```
         cleaned = re.sub(r"```json\s*", "", raw_text)
         cleaned = re.sub(r"```\s*", "", cleaned).strip()
+        # Search for first JSON object {...}
+        json_match = re.search(r"\{[\s\S]*\}", cleaned)
+        if json_match:
+            cleaned = json_match.group(0)
         data = json.loads(cleaned)
         return {
             "reply_text": data.get("reply_text", raw_text),
@@ -23,15 +27,24 @@ def parse_llm_json(raw_text: str):
             "vocab_phonetic": ""
         }
 
-def get_llm_reply(client, transcript: str, system_prompt: str, model_name: str = "gemini-flash-lite-latest") -> dict:
+def get_llm_reply(client, transcript: str, system_prompt: str, history: list = None, model_name: str = "gemini-flash-lite-latest") -> dict:
     models_to_try = [model_name, "gemini-flash-latest", "gemini-3.6-flash"]
     
+    contents = []
+    if history:
+        for turn in history[-6:]: # Keep up to last 6 turns for conversational context
+            role = "user" if turn.get("role") in ["user", "human"] else "model"
+            text_val = str(turn.get("text", "")).strip()
+            if text_val:
+                contents.append(types.Content(role=role, parts=[types.Part.from_text(text=text_val)]))
+    contents.append(types.Content(role="user", parts=[types.Part.from_text(text=transcript)]))
+
     last_error = None
     for m in models_to_try:
         try:
             response = client.models.generate_content(
                 model=m,
-                contents=transcript,
+                contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=system_prompt,
                     max_output_tokens=150,
