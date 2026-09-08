@@ -14,27 +14,30 @@ from llm import get_llm_reply
 from tts import synthesize
 from evidence_logger import log_turn
 
+load_dotenv()
+
+# Persistent Rime TTS connection pool for low latency
+RIME_API_KEY = os.getenv("RIME_API_KEY")
+rime_session = http_requests.Session()
+rime_session.headers.update({
+    "Authorization": f"Bearer {RIME_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "audio/mpeg"
+})
+
 def _synth_with_speaker(text: str, speed: float = 1.0, lang: str = "en", output_path: str = None, speaker: str = "astra") -> str:
-    """Synthesize audio with a specific Rime voice persona."""
-    import os, time as _t
-    from dotenv import load_dotenv
-    load_dotenv()
-    import requests as _req
-    RIME_API_KEY = os.getenv("RIME_API_KEY")
+    """Synthesize audio with a specific Rime voice persona using persistent connection."""
     url = "https://users.rime.ai/v1/rime-tts"
     data = {"speaker": speaker, "text": text, "modelId": "coda", "lang": lang, "speed": speed}
-    headers = {"Authorization": f"Bearer {RIME_API_KEY}", "Content-Type": "application/json", "Accept": "audio/mpeg"}
-    response = _req.post(url, json=data, headers=headers)
+    response = rime_session.post(url, json=data, timeout=8)
     if response.status_code == 200:
         if output_path is None:
-            output_path = f"audio_output/synth_{int(_t.time()*1000)}.mp3"
+            output_path = f"audio_output/synth_{int(time.time()*1000)}.mp3"
         with open(output_path, "wb") as f:
             f.write(response.content)
         return output_path
     else:
         raise Exception(f"Rime TTS failed: {response.status_code} {response.text}")
-
-load_dotenv()
 
 app = FastAPI(title="Cadence Web API", description="Adaptive Multilingual Voice Language Tutor")
 

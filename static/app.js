@@ -227,13 +227,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 appendLog('[STT] 🎙️ Speech detected!');
                 setTutorState('listening', '🎙️', 'HEARING', 'Speech detected...');
             };
-            recognition.onspeechend = () => appendLog('[STT] Silence detected.');
+            recognition.onspeechend = () => {
+                appendLog('[STT] Silence detected.');
+                // Instant trigger on speech end if text buffered
+                if (silenceTimer) {
+                    clearTimeout(silenceTimer);
+                    const finalText = (speechBuffer).trim() || manualTextInput.value.trim();
+                    if (finalText) {
+                        speechBuffer = '';
+                        manualTextInput.value = '';
+                        appendLog(`[STT Captured] "${finalText}"`);
+                        submitUtterance(finalText);
+                    }
+                }
+            };
 
             recognition.onresult = (event) => {
                 let interim = '';
+                let hasFinal = false;
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
                         speechBuffer += event.results[i][0].transcript + ' ';
+                        hasFinal = true;
                     } else {
                         interim += event.results[i][0].transcript;
                     }
@@ -242,6 +257,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentText) {
                     manualTextInput.value = currentText;
                     clearTimeout(silenceTimer);
+                    // Fast trigger: 300ms for final results, 450ms for interim
+                    const waitMs = hasFinal ? 250 : 400;
                     silenceTimer = setTimeout(() => {
                         const finalText = (speechBuffer + interim).trim();
                         if (finalText) {
@@ -250,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             appendLog(`[STT Captured] "${finalText}"`);
                             submitUtterance(finalText);
                         }
-                    }, 1000);
+                    }, waitMs);
                 }
             };
 
