@@ -258,5 +258,6 @@ async def get_audio(filename: str):
 
 if __name__ == "__main__":
     import uvicorn
-    print("Starting Cadence Multilingual Web Server on http://localhost:8000 ...")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    print(f"Starting Cadence Multilingual Web Server on port {port} ...")
+    uvicorn.run(app, host="0.0.0.0", port=port)

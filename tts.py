@@ -8,8 +8,10 @@ from state import state
 
 load_dotenv()
 
-RIME_API_KEY = os.getenv("RIME_API_KEY")
-pygame.mixer.init()
+try:
+    pygame.mixer.init()
+except Exception:
+    pass
 
 _last_file = None
 _speak_lock = threading.Lock()   # NEW
