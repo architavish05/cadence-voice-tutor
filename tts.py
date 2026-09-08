@@ -8,6 +8,8 @@ from state import state
 
 load_dotenv()
 
+RIME_API_KEY = os.getenv("RIME_API_KEY", "")
+
 try:
     pygame.mixer.init()
 except Exception:
