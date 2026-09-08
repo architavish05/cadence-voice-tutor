@@ -212,11 +212,12 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             function updateRecognitionLang() {
-                const nativeLang = nativeLangSelect ? nativeLangSelect.value : 'Hindi';
-                recognition.lang = langMap[nativeLang] || 'hi-IN';
-                appendLog(`[STT] Recognition language: ${recognition.lang}`);
+                const targetLang = targetLangSelect ? targetLangSelect.value : 'English';
+                recognition.lang = langMap[targetLang] || 'en-US';
+                appendLog(`[STT] Recognition listening for: ${targetLang} (${recognition.lang})`);
             }
             updateRecognitionLang();
+            if (targetLangSelect) targetLangSelect.addEventListener('change', updateRecognitionLang);
             if (nativeLangSelect) nativeLangSelect.addEventListener('change', updateRecognitionLang);
 
             let speechBuffer = '';
@@ -517,22 +518,23 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             showTyping(false);
             appendLog(`[ERROR] Server call failed: ${err.message}`);
-            setTutorState('idle', '⚠️', 'ERROR', 'Turn processing error');
+            appendChatBubble('tutor', `⚠️ ${err.message || 'I had trouble processing that turn. Please try saying it again!'}`);
+            setTutorState('listening', '🎙️', 'LISTENING', 'Ready for your next message');
         }
     }
 
     function handleTurnResponse(data) {
-        const isStruggling = data.hesitation.struggle;
-        const speed = data.speed;
+        const isStruggling = data.hesitation ? data.hesitation.struggle : false;
+        const speed = data.speed || 1.0;
         
         speedVal.textContent = `${speed}x`;
         speedVal.className = `metric-value ${isStruggling ? 'amber' : 'green'}`;
         
-        scoreVal.textContent = `${data.hesitation.score} / 5`;
+        scoreVal.textContent = `${data.hesitation ? data.hesitation.score : 0} / 5`;
         struggleBadge.textContent = isStruggling ? 'STRUGGLE DETECTED' : 'Normal Fluency';
         struggleBadge.style.color = isStruggling ? 'var(--accent-amber)' : 'var(--text-muted)';
         
-        reasonVal.textContent = data.hesitation.reason;
+        reasonVal.textContent = data.hesitation ? data.hesitation.reason : 'none';
 
         // Update Fluency Score Meter
         const fluency = data.fluency_score || 100;
@@ -561,14 +563,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
         appendChatBubble('tutor', data.reply_text, isStruggling, speed, data.target_language, data.correction);
 
+        setTutorState(stateName, emoji, badge, text);
+
         if (data.audio_url) {
             lastReplyText = data.reply_text;
             lastReplyAudioUrl = data.audio_url;
             rimeAudioPlayer.src = data.audio_url;
-            rimeAudioPlayer.play();
+            const playPromise = rimeAudioPlayer.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(err => {
+                    appendLog('[AUDIO] Playback notice: ' + err.message);
+                    setTutorState('listening', '🎙️', 'LISTENING', 'Listening for your speech...');
+                });
+            }
             rimeAudioPlayer.onended = () => {
                 setTutorState('listening', '🎙️', 'LISTENING', 'Listening for your speech...');
             };
+            rimeAudioPlayer.onerror = () => {
+                setTutorState('listening', '🎙️', 'LISTENING', 'Listening for your speech...');
+            };
+        } else {
+            // Text-only fallback (no audio)
+            setTimeout(() => {
+                setTutorState('listening', '🎙️', 'LISTENING', 'Listening for your speech...');
+            }, 1500);
         }
 
         appendLog(`[TUTOR] Target=${data.target_language} | Native=${data.native_language} | speed=${speed}x`);

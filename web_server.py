@@ -148,8 +148,15 @@ async def process_turn_api(req: TurnRequest):
         speed = 0.75 if struggling else 1.0
         audio_filename = f"reply_{int(time.time()*1000)}.mp3"
         audio_path = os.path.join("audio_output", audio_filename)
+        audio_url = f"/audio/{audio_filename}"
         
-        _synth_with_speaker(reply_text, speed=speed, lang=get_tts_lang(lang_code), output_path=audio_path, speaker=speaker)
+        try:
+            _synth_with_speaker(reply_text, speed=speed, lang=get_tts_lang(lang_code), output_path=audio_path, speaker=speaker)
+        except Exception as tts_err:
+            print(f"[TTS WARN] Synthesis warning: {tts_err}", flush=True)
+            # If audio file wasn't created, set audio_url to empty
+            if not os.path.exists(audio_path):
+                audio_url = ""
 
         # 4. Calculate Fluency Score (0-100%)
         fluency_score = max(20, 100 - (hesitation["score"] * 20))
@@ -167,14 +174,14 @@ async def process_turn_api(req: TurnRequest):
             "fluency_score": fluency_score,
             "reply_text": reply_text,
             "correction": llm_data.get("correction", ""),
-            "vocab_word": llm_data["vocab_word"],
-            "vocab_translation": llm_data["vocab_translation"],
-            "vocab_phonetic": llm_data["vocab_phonetic"],
+            "vocab_word": llm_data.get("vocab_word", ""),
+            "vocab_translation": llm_data.get("vocab_translation", ""),
+            "vocab_phonetic": llm_data.get("vocab_phonetic", ""),
             "reply_word_count": len(reply_text.split()),
             "speed": speed,
             "target_language": target_lang,
             "native_language": native_lang,
-            "audio_url": f"/audio/{audio_filename}",
+            "audio_url": audio_url,
             "audio_stop_latency": "< 50ms"
         })
 
