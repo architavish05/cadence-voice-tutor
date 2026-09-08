@@ -167,6 +167,56 @@ body {
     overflow: hidden;
 }
 
+/* Scrollable cards for responsive display */
+.telemetry-card {
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    max-height: 100%;
+    padding-right: 0.8rem;
+}
+
+.visualizer-card {
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 100%;
+    padding-right: 0.8rem;
+}
+
+/* Custom violet scrollbar */
+.telemetry-card::-webkit-scrollbar,
+.visualizer-card::-webkit-scrollbar,
+.chat-stream::-webkit-scrollbar,
+.flashcards-container::-webkit-scrollbar,
+.log-terminal::-webkit-scrollbar {
+    width: 6px;
+}
+
+.telemetry-card::-webkit-scrollbar-track,
+.visualizer-card::-webkit-scrollbar-track,
+.chat-stream::-webkit-scrollbar-track,
+.flashcards-container::-webkit-scrollbar-track,
+.log-terminal::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 4px;
+}
+
+.telemetry-card::-webkit-scrollbar-thumb,
+.visualizer-card::-webkit-scrollbar-thumb,
+.chat-stream::-webkit-scrollbar-thumb,
+.flashcards-container::-webkit-scrollbar-thumb,
+.log-terminal::-webkit-scrollbar-thumb {
+    background: rgba(168, 85, 247, 0.35);
+    border-radius: 4px;
+}
+
+.telemetry-card::-webkit-scrollbar-thumb:hover,
+.visualizer-card::-webkit-scrollbar-thumb:hover,
+.chat-stream::-webkit-scrollbar-thumb:hover,
+.flashcards-container::-webkit-scrollbar-thumb:hover,
+.log-terminal::-webkit-scrollbar-thumb:hover {
+    background: rgba(168, 85, 247, 0.7);
+}
+
 .card-header {
     display: flex;
     justify-content: space-between;
@@ -608,6 +658,8 @@ canvas {
 /* Log Terminal */
 .log-container {
     flex: 1;
+    min-height: 140px;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     background: #060911;
