@@ -1,0 +1,8 @@
+requests
+pygame-ce
+sounddevice
+deepgram-sdk
+google-genai
+python-dotenv
+fastapi
+uvicorn

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadence — Adaptive Multilingual Voice Tutor</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navbar -->
+        <header class="navbar">
+            <div class="brand">
+                <div class="logo-icon">🎙️</div>
+                <div class="brand-text">
+                    <h1>Cadence <span class="badge">Voice AI</span></h1>
+                    <p class="subtitle">Adaptive Multilingual Tutor (DataForge x Rime)</p>
+                </div>
+            </div>
+            
+            <div class="top-status">
+                <!-- Target Language Select -->
+                <div class="status-chip target-lang">
+                    <span class="dot green"></span> Learn:
+                    <select id="targetLanguageSelect" class="lang-select">
+                        <option value="English" data-code="en" selected>English (en)</option>
+                        <option value="Spanish" data-code="es">Spanish (es)</option>
+                        <option value="Hindi" data-code="hi">Hindi (hi) 🇮🇳</option>
+                        <option value="Korean" data-code="ko">Korean (ko) 🇰🇷</option>
+                        <option value="Japanese" data-code="ja">Japanese (ja) 🇯🇵</option>
+                        <option value="Chinese" data-code="zh">Chinese (zh) 🇨🇳</option>
+                        <option value="French" data-code="fr">French (fr)</option>
+                        <option value="German" data-code="de">German (de)</option>
+                        <option value="Italian" data-code="it">Italian (it)</option>
+                    </select>
+                </div>
+
+                <!-- Native Language Select -->
+                <div class="status-chip native-lang">
+                    <span class="dot blue"></span> Native:
+                    <select id="nativeLanguageSelect" class="lang-select">
+                        <option value="Hindi" selected>Hindi 🇮🇳</option>
+                        <option value="English">English 🇬🇧</option>
+                        <option value="Spanish">Spanish 🇪🇸</option>
+                        <option value="Korean">Korean 🇰🇷</option>
+                        <option value="Japanese">Japanese 🇯🇵</option>
+                        <option value="Chinese">Chinese 🇨🇳</option>
+                    </select>
+                </div>
+
+                <!-- Roleplay Scenario Select -->
+                <div class="status-chip scenario-chip">
+                    <span class="icon">🎭</span> Mode:
+                    <select id="scenarioSelect" class="lang-select">
+                        <option value="General" selected>Casual Chat</option>
+                        <option value="Cafe">☕ Cafe & Ordering</option>
+                        <option value="Travel">✈️ Airport & Travel</option>
+                        <option value="Interview">💼 Job Interview</option>
+                        <option value="Directions">🚕 Asking Directions</option>
+                    </select>
+                </div>
+
+                <div id="connectionStatus" class="status-chip connection">
+                    <span class="dot gray"></span> Idle
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Grid Layout -->
+        <main class="dashboard-grid">
+            <!-- Left Column: Audio Visualizer & Control Hub -->
+            <section class="card visualizer-card">
+                <div class="card-header">
+                    <h2>Live Voice Loop</h2>
+                    <span id="tutorStateBadge" class="badge-state idle">IDLE</span>
+                </div>
+
+                <!-- Tutor Avatar Status Ring -->
+                <div class="avatar-container">
+                    <div id="avatarRing" class="avatar-ring idle">
+                        <div class="avatar-core">
+                            <span id="avatarEmoji" class="avatar-icon">🎧</span>
+                        </div>
+                    </div>
+                    <p id="tutorStateText" class="state-text">Ready to begin conversation</p>
+                </div>
+
+                <!-- Fluency Score Meter -->
+                <div class="fluency-card">
+                    <div class="fluency-header">
+                        <span>Fluency Score</span>
+                        <strong id="fluencyVal">100%</strong>
+                    </div>
+                    <div class="fluency-bar-bg">
+                        <div id="fluencyBarFill" class="fluency-bar-fill" style="width: 100%;"></div>
+                    </div>
+                </div>
+
+                <!-- Live Waveform Canvas -->
+                <div class="waveform-box">
+                    <canvas id="waveformCanvas"></canvas>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="control-actions">
+                    <button id="toggleSessionBtn" class="btn btn-primary">
+                        <span class="btn-icon">🎙️</span> Start Session
+                    </button>
+                    <button id="interruptBtn" class="btn btn-danger" disabled>
+                        <span class="btn-icon">⚡</span> Barge-In / Interrupt
+                    </button>
+                    <button id="pttBtn" class="btn btn-primary" style="display:none; background:var(--accent-amber);"
+                        onmousedown="pttStart()" onmouseup="pttStop()"
+                        ontouchstart="pttStart()" ontouchend="pttStop()">
+                        <span class="btn-icon">🔴</span> Hold to Talk
+                    </button>
+                </div>
+
+
+                <!-- Demo Simulation Bar -->
+                <div class="simulation-box">
+                    <span class="sim-title">Demo Inputs:</span>
+                    <button onclick="sendSimulatedUtterance('Hello! I want to learn English today.')" class="btn-sim">Normal Speech</button>
+                    <button onclick="sendSimulatedUtterance('Mujhe samajh nahi aaya... um... I don\'t understand')" class="btn-sim warning">Hinglish Struggle</button>
+                </div>
+            </section>
+
+            <!-- Middle Column: Conversation Transcript -->
+            <section class="card chat-card">
+                <div class="card-header">
+                    <h2>Live Conversation Transcript</h2>
+                    <button id="clearChatBtn" class="btn-icon-only" title="Clear Chat">🗑️</button>
+                </div>
+
+                <div id="chatStream" class="chat-stream">
+                    <!-- Welcome Message — updated dynamically by JS -->
+                    <div id="welcomeMsg" class="message-bubble system-msg">
+                        <div class="msg-content" id="welcomeText">
+                            👋 <strong>Welcome to Cadence!</strong><br/>
+                            Select your <em>Learn</em> language and <em>Native</em> language above, then click <strong>Start Session</strong> and speak!
+                        </div>
+                    </div>
+                    <!-- Typing indicator (hidden by default) -->
+                    <div id="typingIndicator" class="message-bubble tutor typing-indicator" style="display:none;">
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                    </div>
+                </div>
+
+                <div class="input-bar">
+                    <input type="text" id="manualTextInput" placeholder="Type here or speak after clicking Start Session..." />
+                    <button id="sendTextBtn" class="btn-send">Send</button>
+                </div>
+            </section>
+
+            <!-- Right Column: Real-Time Telemetry & Vocabulary Flashcards -->
+            <section class="card telemetry-card">
+
+                <!-- Progress Tracker -->
+                <div class="card-header">
+                    <h2>📈 Progress Tracker</h2>
+                    <button id="resetProgressBtn" class="btn-icon-only" title="Reset progress">🔄</button>
+                </div>
+                <div class="progress-grid">
+                    <div class="progress-stat">
+                        <div class="progress-icon">🔥</div>
+                        <div class="progress-val" id="streakVal">0</div>
+                        <div class="progress-label">Day Streak</div>
+                    </div>
+                    <div class="progress-stat">
+                        <div class="progress-icon">📚</div>
+                        <div class="progress-val" id="totalWordsVal">0</div>
+                        <div class="progress-label">Words Learned</div>
+                    </div>
+                    <div class="progress-stat">
+                        <div class="progress-icon">💬</div>
+                        <div class="progress-val" id="totalTurnsVal">0</div>
+                        <div class="progress-label">Total Turns</div>
+                    </div>
+                    <div class="progress-stat">
+                        <div class="progress-icon">⭐</div>
+                        <div class="progress-val" id="avgFluencyVal">—</div>
+                        <div class="progress-label">Avg Fluency</div>
+                    </div>
+                </div>
+
+                <div class="card-header" style="margin-top:0.75rem;">
+                    <h2>Live Vocabulary Flashcards</h2>
+                    <span class="badge live">AUTO-EXTRACT</span>
+                </div>
+
+                <!-- Vocabulary Flashcard Panel -->
+                <div id="flashcardsPanel" class="flashcards-container">
+                    <div class="flashcard-empty">
+                        📚 Key vocabulary words will automatically appear here as you speak!
+                    </div>
+                </div>
+
+                <div class="card-header" style="margin-top: 1rem;">
+                    <h2>Adaptation Telemetry</h2>
+                    <span class="badge live">LIVE</span>
+                </div>
+
+                <!-- Telemetry Cards Grid -->
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <span class="metric-label">Rime Speed</span>
+                        <div id="speedVal" class="metric-value green">1.0x</div>
+                        <span class="metric-sub">Playback speed</span>
+                    </div>
+
+                    <div class="metric-box">
+                        <span class="metric-label">Hesitation Score</span>
+                        <div id="scoreVal" class="metric-value">0 / 5</div>
+                        <span id="struggleBadge" class="metric-sub">No struggle</span>
+                    </div>
+
+                    <div class="metric-box full-width">
+                        <span class="metric-label">Detection Reason</span>
+                        <div id="reasonVal" class="metric-reason">—</div>
+                    </div>
+                </div>
+
+                <!-- Log Stream -->
+                <div class="log-container">
+                    <div class="log-header">Real-Time Evidence Log</div>
+                    <pre id="logTerminal" class="log-terminal">// Multilingual server ready...</pre>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Hidden Audio Player -->
+    <audio id="rimeAudioPlayer" style="display: none;"></audio>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
